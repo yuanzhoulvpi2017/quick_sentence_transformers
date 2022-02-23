@@ -129,3 +129,15 @@ dmypy.json
 .pyre/
 /models/
 /onnx_models/
+onnx_models/
+
+./idea
+.idea/misc.xml
+images/.DS_Store
+.idea/inspectionProfiles/Project_Default.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/vcs.xml
+.idea/quick_sentence_transformers.iml
+.idea/modules.xml
+.DS_Store
+.idea/.gitignore
