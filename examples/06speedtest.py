@@ -214,7 +214,7 @@ class OnnxInfer:
 # _ = [inferpart(session=session, sentences = ['您好'], pooling_model=pooling_model) for i in tqdm(range(2000))]
 
 # 使用原生的sentence transformer代码
-# model_sbert_raw = sbert(big_model_path, device='cuda')
+model_sbert_raw = sbert(big_model_path, device='cuda')
 
 # _ = [model_sbert_raw.encode(['您好'],device='cuda') for i in tqdm(range(2000))]
 
@@ -222,38 +222,74 @@ class OnnxInfer:
 onnxinfer = OnnxInfer(big_model_path=big_model_path)
 
 
-app = FastAPI()
-origins = ["*"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+
+
+##############################################################################
+
+
+if __name__ =='__main__':
+    sentencs = '您好, 我来着中国，我很喜欢中国，晚上可以电话吗，好饿啊，我想下班，不想工作了，真的好烦男奶奶拿啊啊啊啊'
+
+    print(f"总字数: {len(sentencs)+1}")
+    # 测试本地性能
+    total_samples = 5000
+    latency = []
+    for i in tqdm(range(total_samples)):
+        start = time.time()
+        ort_result = onnxinfer.encode(sentences=[f"{sentencs}_{i}"])
+        latency.append(time.time() - start)
+    
+    print('*'* 40)
+    print("type: {} Inference time = {} ms".format('onnx infer', format(sum(latency) * 1000 / len(latency), '.2f')))
+    print('*'* 40)
+    latency = []
+    for i in tqdm(range(total_samples)):
+        start = time.time()
+        raw_result = model_sbert_raw.encode([f"{sentencs}_{i}"],device='cuda')
+        latency.append(time.time() - start)
+    
+    
+    print('*'* 40)
+    print("type: {} Inference time = {} ms".format('raw infer', format(sum(latency) * 1000 / len(latency), '.2f')))
+    print('*'* 40)
 
 
 
 
-@app.get('/nlp_service/ov')
-async def sentenc2vector_async(sentence: str):
-    """
-    onnx version
-    """
-    result = await sync_to_async(onnxinfer.encode)(sentence)
-    # result = inferpart(session, sentence, pooling_model, tokenizer)
-    # print(result)
-    return {'vector':result.numpy().tolist()}
+
+
+
+
+# app = FastAPI()
+# origins = ["*"]
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# @app.get('/nlp_service/ov')
+# async def sentenc2vector_async(sentence: str):
+#     """
+#     onnx version
+#     """
+#     result = await sync_to_async(onnxinfer.encode)(sentence)
+#     # result = inferpart(session, sentence, pooling_model, tokenizer)
+#     # print(result)
+#     return {'vector':result.numpy().tolist()}
 
 
 
 
 
-# nohup /root/anaconda3/envs/mynet/bin/python main.py 1>>nlp_api_log.out &
+# # nohup /root/anaconda3/envs/mynet/bin/python main.py 1>>nlp_api_log.out &
 
 
-if __name__ == '__main__':
-    uvicorn.run(app='06speedtest:app', 
-                host="0.0.0.0", 
-                workers=1,
-                port=8001)
+# if __name__ == '__main__':
+#     uvicorn.run(app='06speedtest:app', 
+#                 host="0.0.0.0", 
+#                 workers=8,
+#                 port=8001)
