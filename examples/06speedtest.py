@@ -6,7 +6,7 @@
 # 3. pooling部分
 
 
-
+import time
 import torch
 from torch import Tensor
 from torch import nn
@@ -126,21 +126,21 @@ import os
 import json
 # from sentence_transformers.models import Pooling
 
-from sentence_transformers import SentenceTransformer as sbert
+from sentence_transformers import SentenceTransformer as SBert
+
 
 from tqdm import tqdm
 import torch as t
 
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-# from sentence_transformers.util import cos_sim
-from sentence_transformers import SentenceTransformer as SBert
-import uvicorn
-from asgiref.sync import sync_to_async
-from pathlib import Path
-import hashlib
-import time
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# # from sentence_transformers.util import cos_sim
+# import uvicorn
+# from asgiref.sync import sync_to_async
+# from pathlib import Path
+# import hashlib
+# import time
 
 
 
@@ -214,7 +214,7 @@ class OnnxInfer:
 # _ = [inferpart(session=session, sentences = ['您好'], pooling_model=pooling_model) for i in tqdm(range(2000))]
 
 # 使用原生的sentence transformer代码
-model_sbert_raw = sbert(big_model_path, device='cuda')
+model_sbert_raw = SBert(big_model_path, device='cuda')
 
 # _ = [model_sbert_raw.encode(['您好'],device='cuda') for i in tqdm(range(2000))]
 
