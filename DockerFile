@@ -1,0 +1,33 @@
+#  quick sentence_transformer environment (speed up sentencetranformer by tritonserver)
+# Build an run:
+#   docker build --pull --rm -f "DockerFile" -t quicksentencetransformers:latest "."
+#   docker run --gpus all -dit --cap-add sys_ptrace -p127.0.0.1:2222:22 --name quicksentencetransformers --hostname test_docker quicksentencetransformers:latest
+
+
+
+FROM nvcr.io/nvidia/tritonserver:22.01-py3
+
+# see .dockerignore to check what is transfered
+# COPY . ./
+
+# RUN pip3 install -U pip && \
+#     pip3 install nvidia-pyindex && \
+#     pip3 install ".[GPU]" -f https://download.pytorch.org/whl/cu113/torch_stable.html --extra-index-url https://pypi.ngc.nvidia.com --no-cache-dir && \
+#     pip3 install sentence-transformers notebook pytorch-quantization
+
+
+
+# RUN ( \
+#     echo 'LogLevel DEBUG2'; \
+#     echo 'PermitRootLogin yes'; \
+#     echo 'PasswordAuthentication yes'; \
+#     echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+#   ) > /etc/ssh/sshd_config_test_docker \
+#   && mkdir /run/sshd
+
+# RUN useradd -m user \
+#   && yes password | passwd user
+
+# RUN usermod -s /bin/bash user
+
+# CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_docker "]
