@@ -44,8 +44,8 @@ class InferSentenceTransformer(object):
                  ):
         """
         model_name_or_path:特指sentence-transformer模型的名称或者路径
-        cache_folder:transformer的缓冲路径
-        onnx_folder: onnx格式的路径
+        cache_folder:transformers的缓冲路径
+        onnx_folder: onnx文件的的路径
         """
         if onnx_folder is None:
             onnx_folder = os.path.join(
