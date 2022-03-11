@@ -1,4 +1,5 @@
 """
+参考代码: https://github.com/UKPLab/sentence-transformers/tree/master/sentence_transformers
 代码结构：
 -. 检查sbert模型文件是否存在 并且进行相关操作 保证模型已经保存在计算机本地
 -. 将sbert模型的transformer部分从pytorch转换成onnx文件
@@ -29,8 +30,8 @@ import torch as t
 from sentence_transformers import __MODEL_HUB_ORGANIZATION__
 from sentence_transformers import __version__
 from sentence_transformers.util import snapshot_download
-
 from sentence_transformers.models import Pooling
+
 
 class InferSentenceTransformer(object):
     def __init__(self, model_name_or_path: Optional[str] = None,
@@ -213,7 +214,8 @@ class InferSentenceTransformer(object):
         pooling_model_path = os.path.join(
             self.model_path, modules_config[1].get('path')
         )
-        return Pooling.load(pooling_model_path)
+        pooling_model = Pooling.load(pooling_model_path)
+        return pooling_model
 
     def load_session(self):
         # self.output_dir = os.path.join("..", "onnx_models")
