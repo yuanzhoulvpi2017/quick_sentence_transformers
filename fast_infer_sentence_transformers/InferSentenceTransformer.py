@@ -37,15 +37,17 @@ class InferSentenceTransformer(object):
     def __init__(self, model_name_or_path: Optional[str] = None,
                  device: Optional[str] = None,
                  cache_folder: Optional[str] = None,
-                 onnx_folder=None,
-                 onnx_model_name=None,
-                 enable_overwrite=True,
-                 max_seq_lengh=128
+                 onnx_folder: Optional[str] = None,
+                 onnx_model_name: Optional[str] = None,
+                 enable_overwrite: Optional[bool] = True
                  ):
         """
         model_name_or_path:特指sentence-transformer模型的名称或者路径
+        device: 使用的是cpu还是cuda。默认为gpu的第0个显卡, 使用的是onnxruntime而不是tenosrrt
         cache_folder:transformers的缓冲路径
         onnx_folder: onnx文件的的路径
+        onnx_model_name: onnx文件名称
+        enable_overwrite: 是否让onnx文件被新的文件给覆盖掉
         """
         if onnx_folder is None:
             onnx_folder = os.path.join(
@@ -106,27 +108,34 @@ class InferSentenceTransformer(object):
             else:
                 fast_onnxprovider = 'CUDAExecutionProvider'
 
-        self.onnx_folder = onnx_folder
-        self.model_path = model_path
-        self.fast_onnxprovider = fast_onnxprovider
-        self.cache_folder = cache_folder
+        self.onnx_folder = onnx_folder  
+        self.model_path = model_path # sbert模型文件夹
+        self.fast_onnxprovider = fast_onnxprovider # onnxruntime的后端
+        self.cache_folder = cache_folder # tranformer的缓冲文件夹
 
         # self.onnx_model_anme = onnx_model_name
         self.enable_overwrite = enable_overwrite
 
-        self.export_model_name = os.path.join(
-            self.onnx_folder, f"{onnx_model_name}.onnx")
+        self.export_model_name = os.path.join(self.onnx_folder, f"{onnx_model_name}.onnx") # 要保存使用的最终文件名称
 
-        # 接下来是做模型转换部分
-        self.pytorchmodel2onnx()
+        if os.path.exists(os.path.join(self.model_path, 'modules.json')):    #Load as SentenceTransformer model
+            # 注释： 这里基本上sbert模型已经没有问题了，但是sbert还支持一些非sbert模型，这一部分还要考虑。
 
-        # 接下来是做推理部分
-        # onnx infer 部分
-        self.session = self.load_session()
-        # pooling 部分
-        self.pooling_model = self.load_pooling()
+            # 接下来是做模型转换部分
+            self.sbertmodel2onnx()
 
-    def pytorchmodel2onnx(self):
+            # 接下来是做推理部分
+            # onnx infer 部分
+            self.session = self._load_sbert_session()
+            # pooling 部分
+            self.pooling_model = self._load_sbert_pooling()
+        else:   #Load with AutoModel
+            # 待补充
+            # modules = self._load_auto_model(model_path)
+            pass 
+
+
+    def sbertmodel2onnx(self):
         """
         将sbert的第一个transformer模型转换成onnx格式文件
         并且保存在onnx_folder文件夹中
@@ -206,7 +215,10 @@ class InferSentenceTransformer(object):
         result = ort_result.get('sentence_embedding')
         return result
 
-    def load_pooling(self):
+    def _load_sbert_pooling(self):
+        """
+        只是处理sbert模型的pooling
+        """
         model_json_path = os.path.join(self.model_path, 'modules.json')
         with open(model_json_path) as fIn:
             modules_config = json.load(fIn)
@@ -216,8 +228,13 @@ class InferSentenceTransformer(object):
         )
         pooling_model = Pooling.load(pooling_model_path)
         return pooling_model
+    
 
-    def load_session(self):
+
+    def _load_sbert_session(self):
+        """
+        只是加载sbert的transformer部分转换的onnx文件
+        """
         # self.output_dir = os.path.join("..", "onnx_models")
         # self.export_model_path = self.export_model_name#os.path.join(self.output_dir, 'optimized_model_gpu.onnx')
 
@@ -233,7 +250,8 @@ class InferSentenceTransformer(object):
 
 if __name__ == '__main__':
     ifsbert = InferSentenceTransformer(
-        model_name_or_path="/home/user_huzheng/documents/quick_sentence_transformers/models/paraphrase-multilingual-MiniLM-L12-v2",
+        # "/home/user_huzheng/documents/quick_sentence_transformers/models/paraphrase-multilingual-MiniLM-L12-v2",
+        model_name_or_path="nli-bert-base",
         device='cuda',
         onnx_model_name="test_onnxmodel02",
         enable_overwrite=False
