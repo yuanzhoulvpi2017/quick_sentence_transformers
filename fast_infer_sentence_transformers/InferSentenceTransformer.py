@@ -30,19 +30,25 @@ from sentence_transformers import __MODEL_HUB_ORGANIZATION__
 from sentence_transformers import __version__
 from sentence_transformers.util import snapshot_download
 
+from sentence_transformers.models import Pooling
 
 class InferSentenceTransformer(object):
     def __init__(self, model_name_or_path: Optional[str] = None,
                  device: Optional[str] = None,
                  cache_folder: Optional[str] = None,
-                 onnx_folder= None):
+                 onnx_folder=None,
+                 onnx_model_name=None,
+                 enable_overwrite=True,
+                 max_seq_lengh=128
+                 ):
         """
         model_name_or_path:特指sentence-transformer模型的名称或者路径
         cache_folder:transformer的缓冲路径
         onnx_folder: onnx格式的路径
         """
         if onnx_folder is None:
-            onnx_folder = os.path.join(os.getcwd(), "InferSentenceTransformer_onnx")
+            onnx_folder = os.path.join(
+                os.getcwd(), "InferSentenceTransformer_onnx")
             os.makedirs(onnx_folder, exist_ok=True)
 
         if cache_folder is None:
@@ -104,9 +110,22 @@ class InferSentenceTransformer(object):
         self.fast_onnxprovider = fast_onnxprovider
         self.cache_folder = cache_folder
 
-        # print(f"provider: {fast_onnxprovider}\nmodel_path: {model_path}")
+        # self.onnx_model_anme = onnx_model_name
+        self.enable_overwrite = enable_overwrite
 
-    def pytorchmodel2onnx(self, enable_overwrite=True):
+        self.export_model_name = os.path.join(
+            self.onnx_folder, f"{onnx_model_name}.onnx")
+
+        # 接下来是做模型转换部分
+        self.pytorchmodel2onnx()
+
+        # 接下来是做推理部分
+        # onnx infer 部分
+        self.session = self.load_session()
+        # pooling 部分
+        self.pooling_model = self.load_pooling()
+
+    def pytorchmodel2onnx(self):
         """
         将sbert的第一个transformer模型转换成onnx格式文件
         并且保存在onnx_folder文件夹中
@@ -129,10 +148,9 @@ class InferSentenceTransformer(object):
         model = model_class.from_pretrained(
             tf_from_s_path, from_tf=False, config=config, cache_dir=self.cache_folder)
 
-        onnx_model_name = "test_name"
+        self.tokenizer = tokenizer
 
-        export_model_name = os.path.join(
-            self.onnx_folder, f"{onnx_model_name}.onnx")
+        # onnx_model_name = self.onnx_model_anme
 
         model.eval()
         device = t.device('cpu')
@@ -145,14 +163,14 @@ class InferSentenceTransformer(object):
             max_length=128,
             return_tensors="pt")
 
-        if enable_overwrite or not os.path.exists(export_model_name):
+        if self.enable_overwrite or not os.path.exists(self.export_model_name):
             with torch.no_grad():
                 symbolic_names = {0: 'batch_size', 1: 'max_seq_len'}
                 torch.onnx.export(model,                                            # model being run
                                   # model input (or a tuple for multiple inputs)
                                   args=tuple(inputs.values()),
                                   # where to save the model (can be a file or file-like object)
-                                  f=export_model_name,
+                                  f=self.export_model_name,
                                   # the ONNX version to export the model to
                                   opset_version=11,
                                   # whether to execute constant folding for optimization
@@ -167,8 +185,7 @@ class InferSentenceTransformer(object):
                                                 'token_type_ids': symbolic_names,
                                                 'start': symbolic_names,
                                                 'end': symbolic_names})
-            print(f"Model exported at: {export_model_name}")
-
+            print(f"Model exported at: {self.export_model_name}")
 
     def encode(self, sentences):
         if isinstance(sentences, str) or not hasattr(sentences, '__len__'):
@@ -184,15 +201,42 @@ class InferSentenceTransformer(object):
         ort_inputs = {k: v.cpu().numpy() for k, v in inputs.items()}
         ort_outputs_gpu = self.session.run(None, ort_inputs)
         ort_result = self.pooling_model.forward(features={'token_embeddings': t.Tensor(ort_outputs_gpu[0]),
-                                                    'attention_mask': inputs.get('attention_mask')})
+                                                          'attention_mask': inputs.get('attention_mask')})
         result = ort_result.get('sentence_embedding')
         return result
 
+    def load_pooling(self):
+        model_json_path = os.path.join(self.model_path, 'modules.json')
+        with open(model_json_path) as fIn:
+            modules_config = json.load(fIn)
+
+        pooling_model_path = os.path.join(
+            self.model_path, modules_config[1].get('path')
+        )
+        return Pooling.load(pooling_model_path)
+
+    def load_session(self):
+        # self.output_dir = os.path.join("..", "onnx_models")
+        # self.export_model_path = self.export_model_name#os.path.join(self.output_dir, 'optimized_model_gpu.onnx')
+
+        sess_options = onnxruntime.SessionOptions()
+        # sess_options.optimized_model_filepath = os.path.join(
+        #     output_dir, "optimized_model_{}.onnx".format(device_name))
+        sess_options.intra_op_num_threads = psutil.cpu_count(logical=True)
+
+        session = onnxruntime.InferenceSession(
+            self.export_model_name, sess_options, providers=['CUDAExecutionProvider'])
+        return session
 
 
 if __name__ == '__main__':
     ifsbert = InferSentenceTransformer(
-        model_name_or_path="/home/user_huzheng/documents/quick_sentence_transformers/models/paraphrase-multilingual-MiniLM-L12-v2", 
-        device='cuda')
-    ifsbert.pytorchmodel2onnx()
+        model_name_or_path="/home/user_huzheng/documents/quick_sentence_transformers/models/paraphrase-multilingual-MiniLM-L12-v2",
+        device='cuda',
+        onnx_model_name="test_onnxmodel02",
+        enable_overwrite=False
+    )
+    # ifsbert.pytorchmodel2onnx()
+    data = ifsbert.encode(sentences=['hello', 'ok'])
+    print(data.shape)
     # ifsbert
