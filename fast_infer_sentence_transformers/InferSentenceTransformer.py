@@ -227,7 +227,7 @@ class InferSentenceTransformer(object):
         sess_options.intra_op_num_threads = psutil.cpu_count(logical=True)
 
         session = onnxruntime.InferenceSession(
-            self.export_model_name, sess_options, providers=['CUDAExecutionProvider'])
+            self.export_model_name, sess_options, providers=[self.fast_onnxprovider])
         return session
 
 
