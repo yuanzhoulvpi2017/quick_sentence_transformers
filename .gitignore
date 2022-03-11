@@ -141,3 +141,6 @@ images/.DS_Store
 .idea/modules.xml
 .DS_Store
 .idea/.gitignore
+
+/InferSentenceTransformer_onnx
+InferSentenceTransformer_onnx/

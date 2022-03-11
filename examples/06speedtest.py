@@ -13,6 +13,7 @@ from torch import nn
 from typing import Union, Tuple, List, Iterable, Dict
 import os
 import json
+import pandas as pd 
 
 
 class Pooling(nn.Module):
@@ -219,6 +220,8 @@ model_sbert_raw = SBert(big_model_path, device='cuda')
 # _ = [model_sbert_raw.encode(['您好'],device='cuda') for i in tqdm(range(2000))]
 
 
+
+
 onnxinfer = OnnxInfer(big_model_path=big_model_path)
 
 
@@ -244,15 +247,15 @@ if __name__ =='__main__':
     print("type: {} Inference time = {} ms".format('onnx infer', format(sum(latency) * 1000 / len(latency), '.2f')))
     print('*'* 40)
     latency = []
-    for i in tqdm(range(total_samples)):
+    for i in tqdm(range(2000000)):
         start = time.time()
         raw_result = model_sbert_raw.encode([f"{sentencs}_{i}"],device='cuda')
         latency.append(time.time() - start)
     
     
-    print('*'* 40)
-    print("type: {} Inference time = {} ms".format('raw infer', format(sum(latency) * 1000 / len(latency), '.2f')))
-    print('*'* 40)
+    # print('*'* 40)
+    # print("type: {} Inference time = {} ms".format('raw infer', format(sum(latency) * 1000 / len(latency), '.2f')))
+    # print('*'* 40)
 
 
 
